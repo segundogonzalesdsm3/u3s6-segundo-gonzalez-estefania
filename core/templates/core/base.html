@@ -1,0 +1,36 @@
+{# base.html: el "molde" que comparten todas las páginas; las demás plantillas solo rellenan el bloque "contenido" #}
+<!DOCTYPE html>
+{# lang="es": el contenido de la página está en español #}
+<html lang="es">
+{# head: datos de la página que no se ven (título, acentos, estilos) #}
+<head>
+  {# charset UTF-8: permite acentos y ñ #}
+  <meta charset="UTF-8">
+  {# viewport: hace que la página se adapte al ancho del celular #}
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {# block titulo: cada página puede cambiar el texto de la pestaña; si no lo cambia, dice "Servicios" #}
+  <title>{% block titulo %}Servicios{% endblock %}</title>
+  {# Play CDN de Tailwind: el mismo que usaste en la Semana 2 y en servicios.html #}
+  <script src="https://cdn.tailwindcss.com"></script>
+  {# style: reglas mínimas para que se vean los campos que dibuja form.as_p (Tailwind les quita el borde) #}
+  <style>
+    /* input, textarea, select: borde gris, esquinas redondeadas, relleno y ancho completo en cada campo */
+    input, textarea, select { border: 1px solid #94a3b8; border-radius: .5rem; padding: .4rem .6rem; width: 100%; }
+    /* label: cada etiqueta en su propia línea y en negritas */
+    label { display: block; font-weight: 600; margin-bottom: .2rem; }
+    /* .errorlist: la lista de errores que genera Django; se pinta en rojo */
+    .errorlist { color: #dc2626; font-size: .9rem; }
+    /* .helptext: los textos de ayuda de Django (ej. reglas de contraseña), en gris y pequeños */
+    .helptext { color: #64748b; font-size: .8rem; display: block; }
+  </style>
+{# cierra el bloque de estilos #}
+{# cierra el head #}
+</head>
+{# body: lo que se ve; max-w-2xl + mx-auto centran el contenido con un ancho máximo #}
+<body class="max-w-2xl mx-auto py-10 px-6 bg-white text-slate-900">
+  {# block contenido: aquí cada página (listado, formulario, eliminar) pone lo suyo #}
+  {% block contenido %}{% endblock %}
+{# cierra el body #}
+</body>
+{# cierra el documento HTML #}
+</html>

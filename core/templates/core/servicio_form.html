@@ -1,0 +1,28 @@
+{# extends: esta página usa el molde base.html y solo rellena sus bloques (debe ser la primera etiqueta) #}
+{% extends 'core/base.html' %}
+
+{# block titulo: el texto de la pestaña ("Nuevo servicio" o "Editar servicio") #}
+{% block titulo %}{{ titulo_pagina }}{% endblock %}
+
+{# block contenido: todo lo que va dentro del body de base.html #}
+{% block contenido %}
+  {# h1: muestra "Nuevo servicio" o "Editar servicio" según lo que mande la vista #}
+  <h1 class="text-2xl font-bold mb-4">{{ titulo_pagina }}</h1>
+  {# method="POST": este formulario envía datos que van a modificar la base de datos #}
+  <form method="POST" class="space-y-4 max-w-md">
+    {# csrf_token: obligatorio en todo formulario POST de Django #}
+    {% csrf_token %}
+    {# form.as_p: dibuja cada campo envuelto en un párrafo, con sus errores si los hay #}
+    {{ form.as_p }}
+    {# type="submit": botón que dispara el envío del formulario #}
+    <button type="submit" class="bg-blue-600 hover:bg-blue-500 text-white font-semibold px-4 py-2 rounded-lg">
+      {# texto visible dentro del botón #}
+      Guardar
+    {# cierra el botón de enviar #}
+    </button>
+    {# enlace para regresar al listado sin guardar nada #}
+    <a href="{% url 'servicios' %}" class="ml-3 text-slate-600 underline">Cancelar</a>
+  {# cierra el formulario: todo lo de arriba se envía junto al dar clic #}
+  </form>
+{# endblock: fin del bloque contenido #}
+{% endblock %}
