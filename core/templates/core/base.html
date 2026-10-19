@@ -1,4 +1,4 @@
-{# base.html: el "molde" que comparten todas las páginas; las demás plantillas solo rellenan el bloque "contenido" #}
+{# base.html: el "molde" de la Semana 5, ahora con barra de sesión y mensajes flash #}
 <!DOCTYPE html>
 {# lang="es": el contenido de la página está en español #}
 <html lang="es">
@@ -10,7 +10,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   {# block titulo: cada página puede cambiar el texto de la pestaña; si no lo cambia, dice "Servicios" #}
   <title>{% block titulo %}Servicios{% endblock %}</title>
-  {# Play CDN de Tailwind: el mismo que usaste en la Semana 2 y en servicios.html #}
+  {# Play CDN de Tailwind: el mismo que usaste en la Semana 2 #}
   <script src="https://cdn.tailwindcss.com"></script>
   {# style: reglas mínimas para que se vean los campos que dibuja form.as_p (Tailwind les quita el borde) #}
   <style>
@@ -22,13 +22,37 @@
     .errorlist { color: #dc2626; font-size: .9rem; }
     /* .helptext: los textos de ayuda de Django (ej. reglas de contraseña), en gris y pequeños */
     .helptext { color: #64748b; font-size: .8rem; display: block; }
+ 
   </style>
-{# cierra el bloque de estilos #}
 {# cierra el head #}
 </head>
 {# body: lo que se ve; max-w-2xl + mx-auto centran el contenido con un ancho máximo #}
 <body class="max-w-2xl mx-auto py-10 px-6 bg-white text-slate-900">
-  {# block contenido: aquí cada página (listado, formulario, eliminar) pone lo suyo #}
+  {# nav: NUEVA barra superior; flex + justify-end alinea los enlaces a la derecha #}
+  <nav class="flex justify-end items-center gap-4 mb-6 text-sm">
+    {# if user.is_authenticated: True si hay sesión iniciada, False si el visitante es anónimo #}
+    {% if user.is_authenticated %}
+      {# user.username: nombre del usuario que inició sesión #}
+      <span>Hola, <b>{{ user.username }}</b></span>
+      {# enlace a la ruta con name='logout' para cerrar la sesión #}
+      <a href="{% url 'logout' %}" class="text-blue-600 underline">Cerrar sesión</a>
+    {# else: lo que ve un visitante SIN sesión iniciada #}
+    {% else %}
+      {# enlace a la ruta con name='login' #}
+      <a href="{% url 'login' %}" class="text-blue-600 underline">Iniciar sesión</a>
+      {# enlace a la ruta con name='registro' para crear una cuenta nueva #}
+      <a href="{% url 'registro' %}" class="text-blue-600 underline">Crear cuenta</a>
+    {# endif: fin del bloque con sesión / sin sesión #}
+    {% endif %}
+  {# cierra la barra superior #}
+  </nav>
+  {# for message in messages: recorre los mensajes guardados con messages.success() o messages.info() #}
+  {% for message in messages %}
+    {# cada mensaje se dibuja en una cajita verde (fondo emerald-100, texto emerald-800) #}
+    <div class="bg-emerald-100 text-emerald-800 px-4 py-2 rounded-lg mb-4">{{ message }}</div>
+  {# endfor: fin de la repetición de mensajes #}
+  {% endfor %}
+  {# block contenido: aquí cada página (listado, formularios, login, registro) pone lo suyo #}
   {% block contenido %}{% endblock %}
 {# cierra el body #}
 </body>

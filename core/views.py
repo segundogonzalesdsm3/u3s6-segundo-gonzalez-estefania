@@ -1,12 +1,18 @@
-# render: junta una plantilla con datos · redirect: manda al navegador a otra URL · get_object_or_404: busca un registro o responde 404
+# render, redirect, get_object_or_404: los mismos atajos de Django que ya usabas en la Semana 5
 from django.shortcuts import render, redirect, get_object_or_404
 # connection: datos de la conexión a la base (lo usa la vista "inicio" de la Semana 3)
 from django.db import connection
 # login_required: decorador que exige sesión iniciada antes de entrar a la vista
 from django.contrib.auth.decorators import login_required
-# Servicio: el modelo de la Semana 4, importado desde este mismo directorio
+# login: inicia la sesión de un usuario · logout: la cierra
+from django.contrib.auth import login, logout
+# UserCreationForm: formulario de registro listo · AuthenticationForm: formulario de inicio de sesión listo
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm
+# messages: mensajes flash que se muestran una sola vez y luego desaparecen
+from django.contrib import messages
+# Servicio: el modelo de la Semana 4
 from .models import Servicio
-# ServicioForm: el ModelForm que creaste en el paso 01
+# ServicioForm: el ModelForm de la Semana 5
 from .forms import ServicioForm
 
 
@@ -26,11 +32,14 @@ def inicio(request):
     return render(request, 'core/inicio.html', contexto)
 
 
-# servicios: la vista del listado de la Semana 4 (no cambia)
+# @login_required: NUEVO aquí; si no hay sesión, manda a LOGIN_URL en lugar de ejecutar la vista
+@login_required
+# servicios: la vista del listado
 def servicios(request):
-    # .objects.all(): pide TODOS los servicios a MySQL
-    lista_servicios = Servicio.objects.all()
-    # entrega la lista a la plantilla con el nombre "servicios"
+    # filter(propietario=request.user): SELECT ... WHERE propietario_id = <id del usuario logueado>
+    # reemplaza al .all() de la Semana 4, que traía los servicios de TODOS los usuarios
+    lista_servicios = Servicio.objects.filter(propietario=request.user)
+    # render: dibuja la tabla solo con los servicios del usuario actual
     return render(request, 'core/servicios.html', {'servicios': lista_servicios})
 
 
@@ -59,35 +68,38 @@ def crear_servicio(request):
     # render: dibuja la plantilla, pasándole el formulario (vacío o con errores)
     return render(request, 'core/servicio_form.html', {'form': form, 'titulo_pagina': 'Nuevo servicio'})
 
-# @login_required: solo usuarios con sesión iniciada pueden editar
+
+# @login_required: solo usuarios con sesión pueden editar
 @login_required
-# pk: la clave primaria (id) que Django extrae del pedazo <int:pk> de la URL (paso 05)
+# pk: el id que viene en la URL /servicios/<pk>/editar/
 def editar_servicio(request, pk):
-    # busca el Servicio con ese id; si no existe, responde 404 automáticamente
-    servicio = get_object_or_404(Servicio, pk=pk)
+    # get_object_or_404 con DOS condiciones: el id correcto Y que el dueño sea el usuario actual
+    # si alguien intenta editar el servicio de otro cambiando el número en la URL, recibe un 404
+    servicio = get_object_or_404(Servicio, pk=pk, propietario=request.user)
     # si el usuario envió el formulario con cambios, la petición llega como POST
     if request.method == 'POST':
-        # instance=servicio: le dice al formulario "actualiza ESTE registro, no crees uno nuevo"
+        # instance=servicio: el formulario actualiza ESE registro en vez de crear uno nuevo
         form = ServicioForm(request.POST, instance=servicio)
-        # is_valid(): revisa tipos de dato y campos obligatorios
+        # is_valid(): revisa tipos, campos obligatorios y tu clean_precio
         if form.is_valid():
-            # save(): al tener instance=, guarda los cambios sobre el mismo registro (UPDATE, no INSERT)
+            # save(): guarda los cambios en MySQL (UPDATE)
             form.save()
             # redirect: regresa al listado después de guardar
             return redirect('servicios')
     # si no es POST, es GET: se acaba de abrir la pantalla de edición
     else:
-        # instance=servicio sin datos de POST: precarga el formulario con los valores actuales
+        # formulario precargado con los datos actuales del servicio
         form = ServicioForm(instance=servicio)
-    # render: reutiliza servicio_form.html con el título "Editar servicio"
+    # render: dibuja el mismo template de Crear, con título "Editar servicio"
     return render(request, 'core/servicio_form.html', {'form': form, 'titulo_pagina': 'Editar servicio'})
+
 
 # @login_required: solo usuarios con sesión iniciada pueden borrar
 @login_required
 # eliminar_servicio: recibe el pk (id) desde la URL /servicios/<pk>/eliminar/
 def eliminar_servicio(request, pk):
-    # busca el registro exacto a borrar, igual que en editar_servicio
-    servicio = get_object_or_404(Servicio, pk=pk)
+    # mismo candado que en editar: el id correcto Y que el dueño sea el usuario actual; si no, 404
+    servicio = get_object_or_404(Servicio, pk=pk, propietario=request.user)
     # solo se borra si llega un POST (el botón de confirmar), nunca con un simple GET
     if request.method == 'POST':
         # delete(): borra la fila de MySQL de verdad
@@ -96,3 +108,59 @@ def eliminar_servicio(request, pk):
         return redirect('servicios')
     # si es GET, solo muestra la pantalla de "¿Seguro?"; todavía no borra nada
     return render(request, 'core/servicio_confirm_delete.html', {'servicio': servicio})
+
+
+# registro: la vista que atiende /registro/ (recibe la petición del navegador)
+def registro(request):
+    # si el usuario envió el formulario (botón «Registrarme»), la petición llega como POST
+    if request.method == 'POST':
+        # reconstruye el formulario con los datos tecleados (usuario y contraseñas)
+        form = UserCreationForm(request.POST)
+        # is_valid(): revisa que el usuario no exista y que las 2 contraseñas coincidan y sean seguras
+        if form.is_valid():
+            # save(): crea el User en MySQL, ya con la contraseña hasheada por Django
+            usuario_nuevo = form.save()
+            # login(): inicia sesión automáticamente con la cuenta recién creada
+            login(request, usuario_nuevo)
+            # messages.success: mensaje verde de bienvenida que se verá una sola vez en la siguiente página
+            messages.success(request, f'Cuenta creada. ¡Bienvenido, {usuario_nuevo.username}!')
+            # redirect: manda al usuario ya logueado al listado (name='servicios')
+            return redirect('servicios')
+    # si no es POST, es GET: el usuario apenas abrió la página
+    else:
+        # formulario vacío para cuando la vista se abre por primera vez (GET)
+        form = UserCreationForm()
+    # render: dibuja registro.html con el formulario (vacío o con los errores)
+    return render(request, 'core/registro.html', {'form': form})
+
+
+# iniciar_sesion: la vista que atiende /login/
+def iniciar_sesion(request):
+    # si el usuario envió usuario y contraseña, la petición llega como POST
+    if request.method == 'POST':
+        # AuthenticationForm necesita "request" además de los datos, para poder validar contra la BD
+        form = AuthenticationForm(request, data=request.POST)
+        # is_valid(): aquí Django comprueba que el usuario exista y la contraseña sea correcta
+        if form.is_valid():
+            # get_user(): devuelve el User ya verificado · login(): guarda la sesión en una cookie
+            login(request, form.get_user())
+            # messages.success: mensaje verde que confirma el inicio de sesión
+            messages.success(request, 'Sesión iniciada correctamente.')
+            # redirect: tras iniciar sesión, lo manda al listado de servicios
+            return redirect('servicios')
+    # si no es POST, es GET: el usuario apenas abrió la página de login
+    else:
+        # AuthenticationForm(): formulario vacío de usuario y contraseña
+        form = AuthenticationForm()
+    # render: dibuja login.html con el formulario (vacío o con el error de credenciales)
+    return render(request, 'core/login.html', {'form': form})
+
+
+# cerrar_sesion: la vista que atiende /logout/
+def cerrar_sesion(request):
+    # logout(request): invalida la sesión actual; request.user vuelve a ser AnonymousUser
+    logout(request)
+    # messages.info: guarda un mensaje que se muestra una única vez en la próxima página
+    messages.info(request, 'Sesión cerrada correctamente.')
+    # redirect: manda a la pantalla de login, donde se verá el mensaje
+    return redirect('login')
